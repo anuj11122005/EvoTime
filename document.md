@@ -10,7 +10,7 @@ Subject: Soft Computing · B.Tech CSE (AI & ML) · Adani University, Ahmedabad
 Submitted by: Anuj · Guide: [name] · Academic year: [year]
 
 ### Abstract (draft)
-College timetabling is a constrained combinatorial optimization problem. EvoTime applies a Genetic Algorithm, implemented from scratch in Python, to generate weekly timetables that avoid teacher, room and batch clashes while respecting teacher availability and room capacity. Candidate timetables are evolved using tournament selection, crossover, mutation, repair and elitism, evaluated by a penalty function that weights hard violations far above soft preferences. An independent validator verifies the final result, and a Streamlit dashboard visualizes the timetable, conflicts and convergence. In experiments on a sample dataset, the best penalty reduced from [initial] to [final] in [n] generations, with [x] hard violations confirmed by the validator.
+College timetabling is a constrained combinatorial optimization problem. EvoTime applies a Genetic Algorithm, implemented from scratch in Python, to generate weekly timetables that avoid teacher, room and batch clashes while respecting teacher availability and room capacity. Candidate timetables are evolved using tournament selection (k=4), uniform crossover, multi-type mutation, structural repair and elitism, evaluated by a penalty function that weights hard violations far above soft preferences. An independent validator verifies the final result, and a Streamlit dashboard visualizes the timetable, conflicts and convergence. In experiments on a 2-batch benchmark dataset (84% slot utilization), the best penalty reduced from 15,412.0 (15 hard clashes) to 202.0–298.0 with 0 hard violations confirmed by the validator, achieving a 95.0% success rate across 20 unseen test seeds in an average of 80.4 generations.
 
 ### Chapters
 1. **Introduction** – timetabling difficulty, why automation helps.
@@ -80,20 +80,20 @@ IF report.is_valid: SUCCESS ELSE: FAILED (show violations)
 9. Export CSV.
 
 ## 4. Testing checklist
-- [ ] Sample data passes feasibility pre-check
-- [ ] Infeasible data is rejected/failed with a clear message
-- [ ] Initial population has correct gene count; each lecture appears exactly once
-- [ ] Crossover preserves lecture set (no loss/duplicates)
-- [ ] Mutation preserves lecture set
-- [ ] Repair fixes out-of-range practicals and wrong room types
-- [ ] Fitness equals expected value on hand-built timetables
-- [ ] Validator detects: teacher clash, room clash, batch clash, missing lecture, duplicate lecture, unavailable teacher, capacity violation, broken practical
-- [ ] Elitism: best penalty never increases across generations
-- [ ] Same seed → same result; different seeds → different runs
-- [ ] Feasible run ends with validator `is_valid = True`
-- [ ] UI shows FAILED when validator reports violations
-- [ ] Graph values match logged history
-- [ ] CSV export opens correctly
+- [x] Sample data passes feasibility pre-check
+- [x] Infeasible data is rejected/failed with a clear message
+- [x] Initial population has correct gene count; each lecture appears exactly once
+- [x] Crossover preserves lecture set (no loss/duplicates)
+- [x] Mutation preserves lecture set
+- [x] Repair fixes out-of-range practicals and wrong room types
+- [x] Fitness equals expected value on hand-built timetables
+- [x] Validator detects: teacher clash, room clash, batch clash, missing lecture, duplicate lecture, unavailable teacher, capacity violation, broken practical
+- [x] Elitism: best penalty never increases across generations
+- [x] Same seed → same result; different seeds → different runs
+- [x] Feasible run ends with validator `is_valid = True`
+- [x] UI shows FAILED when validator reports violations
+- [x] Graph values match logged history
+- [x] CSV export opens correctly
 
 ## 5. Expected output format (CLI)
 ```

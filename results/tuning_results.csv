@@ -1,0 +1,6 @@
+variant,parameters,success_count,success_rate_pct,avg_final_hard_violations,avg_generations_for_success,runtime_sec
+Baseline,"pop=50, gen=200, mut=0.08, k=3",9/10,90.0,0.1,128.1,145.86
+Variant A,"pop=50, gen=250, mut=0.08, k=4",10/10,100.0,0.0,83.1,101.19
+Variant B,"pop=70, gen=250, mut=0.09, k=3",5/10,50.0,0.6,214.6,279.83
+Variant C,"pop=60, gen=250, mut=0.09, conflict_prob=0.85",6/10,60.0,0.5,207.5,83.61
+Variant D,Variant C + Random Immigrants,5/10,50.0,0.8,173.6,77.54

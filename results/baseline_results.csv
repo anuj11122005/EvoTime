@@ -1,0 +1,21 @@
+seed,status,generations_run,final_hard,final_soft,runtime_sec,stop_reason
+101,SUCCESS,100,0,26.4,3.88,"Feasible timetable found at generation 100 (Hard clashes: 0, Penalty: 264.0)"
+102,FAILED,200,2,23.4,6.67,Reached maximum generations limit (200)
+103,SUCCESS,143,0,27.8,4.92,"Feasible timetable found at generation 143 (Hard clashes: 0, Penalty: 278.0)"
+104,SUCCESS,124,0,24.8,4.21,"Feasible timetable found at generation 124 (Hard clashes: 0, Penalty: 248.0)"
+105,SUCCESS,200,0,30.4,7.22,Reached maximum generations limit (200)
+106,SUCCESS,173,0,29.4,6.25,"Feasible timetable found at generation 173 (Hard clashes: 0, Penalty: 294.0)"
+107,SUCCESS,123,0,19.8,4.28,"Feasible timetable found at generation 123 (Hard clashes: 0, Penalty: 198.0)"
+108,SUCCESS,149,0,15.2,5.52,"Feasible timetable found at generation 149 (Hard clashes: 0, Penalty: 152.0)"
+109,SUCCESS,136,0,21.4,5.62,"Feasible timetable found at generation 136 (Hard clashes: 0, Penalty: 214.0)"
+110,SUCCESS,118,0,15.8,3.91,"Feasible timetable found at generation 118 (Hard clashes: 0, Penalty: 158.0)"
+111,SUCCESS,63,0,25.4,2.23,"Feasible timetable found at generation 63 (Hard clashes: 0, Penalty: 254.0)"
+112,SUCCESS,118,0,25.8,4.04,"Feasible timetable found at generation 118 (Hard clashes: 0, Penalty: 258.0)"
+113,SUCCESS,49,0,22.4,1.6,"Feasible timetable found at generation 49 (Hard clashes: 0, Penalty: 224.0)"
+114,SUCCESS,176,0,22.8,5.48,"Feasible timetable found at generation 176 (Hard clashes: 0, Penalty: 228.0)"
+115,SUCCESS,136,0,24.8,4.6,"Feasible timetable found at generation 136 (Hard clashes: 0, Penalty: 248.0)"
+116,FAILED,200,2,20.8,6.34,Reached maximum generations limit (200)
+117,SUCCESS,174,0,26.2,5.72,"Feasible timetable found at generation 174 (Hard clashes: 0, Penalty: 262.0)"
+118,FAILED,200,1,16.2,6.66,Reached maximum generations limit (200)
+119,SUCCESS,161,0,21.8,5.31,"Feasible timetable found at generation 161 (Hard clashes: 0, Penalty: 218.0)"
+120,SUCCESS,143,0,26.4,4.94,"Feasible timetable found at generation 143 (Hard clashes: 0, Penalty: 264.0)"

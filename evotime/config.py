@@ -45,11 +45,11 @@ TOTAL_SLOTS_PER_WEEK: int = NUM_DAYS * PERIODS_PER_DAY
 # ============================================================================
 
 DEFAULT_POPULATION_SIZE: int = 50       # Number of candidate timetables in each generation
-DEFAULT_MAX_GENERATIONS: int = 200      # Maximum number of evolutionary cycles before stopping
+DEFAULT_MAX_GENERATIONS: int = 250      # Maximum number of evolutionary cycles before stopping (tuned from 200)
 DEFAULT_CROSSOVER_RATE: float = 0.8     # Probability of mating two parent timetables
 DEFAULT_MUTATION_RATE: float = 0.08     # Probability of mutating each individual gene
 DEFAULT_ELITISM_COUNT: int = 2          # Top best timetables carried forward unchanged
-DEFAULT_TOURNAMENT_K: int = 3           # Number of candidates competing in tournament selection
+DEFAULT_TOURNAMENT_K: int = 4           # Number of candidates competing in tournament selection (tuned from 3)
 DEFAULT_RANDOM_SEED: int = 42           # Fixed seed for reproducibility of experimental runs
 
 
