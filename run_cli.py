@@ -1,22 +1,25 @@
 """
-run_cli.py — Command-Line Runner for EvoTime Genetic Algorithm.
+run_cli.py — Command-Line Interface Runner for EvoTime.
 
-Allows executing the entire timetabling optimization pipeline directly from
-the terminal. Performs pre-run feasibility analysis, initializes the GA, streams
-generational convergence progress, and invokes the independent validator to
-report the final verdict.
-
-Usage:
-    python run_cli.py
-    python run_cli.py --dataset feasible --seed 42 --generations 200
-    python run_cli.py --dataset infeasible --force
+Runs the Genetic Algorithm engine with configurable datasets and random seeds,
+demonstrates real-time generational logging, and outputs the final independent
+validator audit report.
 """
 
 import argparse
 import sys
 from typing import Any
 
-from evotime.config import GAConfig
+from evotime.config import (
+    DEFAULT_CROSSOVER_RATE,
+    DEFAULT_ELITISM_COUNT,
+    DEFAULT_MAX_GENERATIONS,
+    DEFAULT_MUTATION_RATE,
+    DEFAULT_POPULATION_SIZE,
+    DEFAULT_RANDOM_SEED,
+    DEFAULT_TOURNAMENT_K,
+    GAConfig,
+)
 from evotime.feasibility import check_feasibility, format_feasibility_summary
 from evotime.ga import run_ga
 from evotime.sample_data import get_feasible_dataset, get_infeasible_dataset
@@ -36,20 +39,44 @@ def main() -> None:
     parser.add_argument(
         "--seed",
         type=int,
-        default=42,
-        help="Random seed for reproducibility (default: 42)",
+        default=DEFAULT_RANDOM_SEED,
+        help=f"Random seed for reproducibility (default: {DEFAULT_RANDOM_SEED})",
     )
     parser.add_argument(
         "--population",
         type=int,
-        default=50,
-        help="Population size (default: 50)",
+        default=DEFAULT_POPULATION_SIZE,
+        help=f"Population size (default: {DEFAULT_POPULATION_SIZE})",
     )
     parser.add_argument(
         "--generations",
         type=int,
-        default=200,
-        help="Maximum generations to run (default: 200)",
+        default=DEFAULT_MAX_GENERATIONS,
+        help=f"Maximum generations to run (default: {DEFAULT_MAX_GENERATIONS})",
+    )
+    parser.add_argument(
+        "--k",
+        type=int,
+        default=DEFAULT_TOURNAMENT_K,
+        help=f"Tournament selection size k (default: {DEFAULT_TOURNAMENT_K})",
+    )
+    parser.add_argument(
+        "--mutation-rate",
+        type=float,
+        default=DEFAULT_MUTATION_RATE,
+        help=f"Mutation probability per gene (default: {DEFAULT_MUTATION_RATE})",
+    )
+    parser.add_argument(
+        "--crossover-rate",
+        type=float,
+        default=DEFAULT_CROSSOVER_RATE,
+        help=f"Crossover probability (default: {DEFAULT_CROSSOVER_RATE})",
+    )
+    parser.add_argument(
+        "--elitism",
+        type=int,
+        default=DEFAULT_ELITISM_COUNT,
+        help=f"Number of elite individuals preserved (default: {DEFAULT_ELITISM_COUNT})",
     )
     parser.add_argument(
         "--force",
@@ -94,16 +121,24 @@ def main() -> None:
     batch_needed = sum(l.duration for l in dataset.lectures if l.batch_id == batch_info.id)
     utilization = (batch_needed / 25.0) * 100.0
 
-    print(f"\n>>> Dataset: {dataset.name}")
-    print(f"    * Total Lecture Sessions: {total_lectures} ({total_periods} periods)")
-    print(f"    * Slots per Batch: 25 | Utilization: {utilization:.1f}%")
-    print(f"    * GA Parameters: Population={args.population}, Max Generations={args.generations}, Seed={args.seed}")
-
-    # 4. Configure and Run GA
+    # 4. Configure GA
     config = GAConfig(
         population_size=args.population,
         max_generations=args.generations,
+        tournament_k=args.k,
+        mutation_rate=args.mutation_rate,
+        crossover_rate=args.crossover_rate,
+        elitism_count=args.elitism,
         seed=args.seed,
+    )
+
+    print(f"\n>>> Dataset: {dataset.name}")
+    print(f"    * Total Lecture Sessions: {total_lectures} ({total_periods} periods)")
+    print(f"    * Slots per Batch: 25 | Utilization: {utilization:.1f}%")
+    print(
+        f"    * GA Parameters: Population={config.population_size}, Max Generations={config.max_generations}, "
+        f"Tournament k={config.tournament_k}, Mutation Rate={config.mutation_rate}, "
+        f"Crossover Rate={config.crossover_rate}, Elitism={config.elitism_count}, Seed={config.seed}"
     )
 
     print("\n>>> Step 2: Launching Genetic Algorithm Search...")
@@ -146,4 +181,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

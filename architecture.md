@@ -37,33 +37,46 @@ EvoTime is a local Streamlit application driven by a hand-written Genetic Algori
 ```
 
 ## 2. Folder structure
-```
+`
 evotime/
-├── app.py                  # Streamlit dashboard (built LAST)
-├── requirements.txt
-├── README.md
-├── rule.md
-├── architecture.md
-├── document.md
+├── app.py                  # Interactive Streamlit dashboard
+├── requirements.txt        # Pinned production and test dependencies
+├── README.md               # User guide, CLI instructions, and demo script
+├── rule.md                 # Project rules and constraints
+├── architecture.md         # System architecture and design documentation
+├── document.md             # Theoretical documentation and viva preparation guide
+├── run_cli.py              # Command-line GA runner and verification tool
+├── experiments.py          # Multi-seed benchmarking and telemetry suite
+├── tuning_experiments.py   # Parameter ablation and tuning experiments suite
+├── summarize_results.py    # Results analyzer and summary verification utility
 ├── evotime/
 │   ├── __init__.py
-│   ├── config.py           # GA parameters, penalty weights, days/periods
-│   ├── models.py           # dataclasses: Subject, Teacher, Room, Batch, Lecture, Gene, Timetable
-│   ├── sample_data.py      # feasible + infeasible datasets
-│   ├── feasibility.py      # pre-run slot/capacity sanity checks
-│   ├── ga.py               # GA loop, init, selection, crossover, mutation, elitism
-│   ├── fitness.py          # penalty calculation (hard + soft)
-│   ├── repair.py           # repair mechanism
-│   ├── validator.py        # independent hard-constraint validator
-│   └── results.py          # tables, grid, plots, export
-├── tests/
-│   ├── test_models.py
-│   ├── test_fitness.py
-│   ├── test_validator.py
-│   ├── test_ga_operators.py
-│   └── test_end_to_end.py  # feasible + infeasible scenarios
-└── run_cli.py              # command-line GA runner for Phases 1–4
-```
+│   ├── config.py           # GA hyperparameters, penalty weights, day/period settings
+│   ├── models.py           # Dataclasses: Subject, Teacher, Room, Batch, Lecture, Gene, Timetable
+│   ├── sample_data.py      # Feasible and infeasible academic datasets
+│   ├── feasibility.py      # Pre-run mathematical slot and capacity sanity checks
+│   ├── ga.py               # Pure-Python GA engine (selection, crossover, mutation, elitism)
+│   ├── fitness.py          # Constraint penalty evaluation (hard + soft penalties)
+│   ├── repair.py           # Domain-specific chromosome repair mechanism
+│   ├── validator.py        # Strictly independent hard-constraint audit validator
+│   └── results.py          # Timetable grid builder, visualizations, and CSV export
+├── results/
+│   ├── baseline_results.csv # 20 test seeds under Baseline configuration
+│   ├── tuned_results.csv   # 20 test seeds under Tuned Variant A configuration
+│   └── tuning_results.csv  # 10 tuning seeds across 5 parameter ablation variants
+└── tests/
+    ├── __init__.py
+    ├── helpers.py          # Test-only deterministic timetable builder
+    ├── test_app.py         # Streamlit AppTest integration tests
+    ├── test_models.py      # Domain model and dataclass tests
+    ├── test_sample_data.py # Dataset integrity and load tests
+    ├── test_feasibility.py # Pre-check mathematical validator tests
+    ├── test_fitness.py     # Penalty function unit tests
+    ├── test_validator.py   # Independent validator unit tests
+    ├── test_ga_operators.py# Selection, crossover, mutation, and repair tests
+    ├── test_results.py     # Results grid rendering and CSV export tests
+    └── test_end_to_end.py  # Full GA optimization and edge-case integration tests
+`
 
 ## 3. Data model
 | Entity | Fields |

@@ -164,6 +164,12 @@ def main() -> None:
         default=None,
         help="Override mutation rate",
     )
+    parser.add_argument(
+        "--k",
+        type=int,
+        default=None,
+        help="Override tournament size k",
+    )
 
     args = parser.parse_args()
 
@@ -181,6 +187,8 @@ def main() -> None:
         overrides["max_generations"] = args.gens
     if args.mut is not None:
         overrides["mutation_rate"] = args.mut
+    if args.k is not None:
+        overrides["tournament_k"] = args.k
 
     run_experiment_suite(
         seeds=seed_list,

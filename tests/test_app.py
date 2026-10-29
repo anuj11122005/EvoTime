@@ -7,13 +7,16 @@ Verifies that:
 3. Infeasible dataset disables the Generate button unless 'force' is checked.
 """
 
+from pathlib import Path
 import pytest
 from streamlit.testing.v1 import AppTest
+
+APP_PATH = str(Path(__file__).parent.parent / "app.py")
 
 
 def test_app_renders_initially_without_exceptions():
     """Verify that app.py loads cleanly, renders tabs, and throws no exceptions."""
-    at = AppTest.from_file("app.py", default_timeout=60)
+    at = AppTest.from_file(APP_PATH, default_timeout=60)
     at.run()
 
     assert not at.exception
@@ -23,8 +26,8 @@ def test_app_renders_initially_without_exceptions():
 
 
 def test_app_infeasible_disables_generate_button():
-    """Verify that selecting the infeasible dataset disables the Generate button until forced."""
-    at = AppTest.from_file("app.py", default_timeout=60)
+    """Verify that selecting the infeasible dataset disables the Generate button until forced and displays errors."""
+    at = AppTest.from_file(APP_PATH, default_timeout=60)
     at.run()
 
     # Switch to Infeasible Dataset
@@ -34,6 +37,13 @@ def test_app_infeasible_disables_generate_button():
     # Button should be disabled
     generate_btn = at.button[0]
     assert generate_btn.disabled is True
+
+    # Check that pre-check problems are visibly displayed in markdown / error widgets
+    error_texts = [str(e.value) for e in at.error]
+    markdown_texts = [str(m.value) for m in at.markdown]
+    combined_texts = " ".join(error_texts + markdown_texts)
+    assert "27 periods" in combined_texts or "exceeds" in combined_texts
+    assert "Dr. Mehta" in combined_texts or "available for 3 slots" in combined_texts
 
     # Check the "Run anyway (force)" checkbox
     at.checkbox[0].check().run()
@@ -48,7 +58,7 @@ def test_app_generate_timetable_execution():
     Verify that clicking 'Generate Timetable' runs the GA,
     stores results in session_state, and renders without exceptions.
     """
-    at = AppTest.from_file("app.py", default_timeout=180)
+    at = AppTest.from_file(APP_PATH, default_timeout=180)
     at.run()
 
     # Set very small pop and generations for quick test execution

@@ -13,7 +13,7 @@ A core architectural principle of EvoTime is **academic integrity through indepe
 ## 🚀 Quick Start Guide
 
 ### 1. Installation
-Clone the repository, create a Python 3.10+ virtual environment, and install dependencies:
+Clone the repository, create a virtual environment (verified on **Python 3.12.3**; compatible with Python 3.10+), and install dependencies:
 
 ```bash
 # Clone the repository
