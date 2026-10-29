@@ -184,3 +184,28 @@ def test_cross_check_fitness_vs_validator_exact_match(dataset):
             f"Validator hard_count: {len(validator_res.hard_violations)}\n"
             f"Validator violations: {[v.kind for v in validator_res.hard_violations]}"
         )
+
+
+def test_validator_catches_theory_same_day_duplicate(dataset, valid_timetable):
+    """Verify validator flags THEORY_SAME_DAY_DUPLICATE when a theory subject appears twice on the same day for a batch."""
+    tt = copy.deepcopy(valid_timetable)
+    sc_genes = [g for g in tt.genes if "L_B_CSE_A_CS301" in g.lecture_id]
+    assert len(sc_genes) >= 2
+    # Place on same day, different periods/rooms
+    sc_genes[1].day = sc_genes[0].day
+    sc_genes[1].start_period = (sc_genes[0].start_period + 2) % 5
+    sc_genes[1].room_id = "R102"
+    sc_genes[0].room_id = "R101"
+
+    report = validate(tt, dataset)
+    assert report.is_valid is False
+    assert any(v.kind == "THEORY_SAME_DAY_DUPLICATE" for v in report.hard_violations)
+    dup_v = [v for v in report.hard_violations if v.kind == "THEORY_SAME_DAY_DUPLICATE"][0]
+    assert "Soft Computing" in dup_v.details or "CS301" in dup_v.details
+
+
+def test_validator_exempts_practicals_from_same_day_duplicate(dataset, valid_timetable):
+    """Verify that practical lab sessions are exempt from THEORY_SAME_DAY_DUPLICATE."""
+    report = validate(valid_timetable, dataset)
+    assert report.is_valid is True
+    assert not any(v.kind == "THEORY_SAME_DAY_DUPLICATE" for v in report.hard_violations)

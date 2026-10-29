@@ -89,6 +89,7 @@ def validate(
     teacher_slots: Dict[Tuple[str, int, int], List[Gene]] = {}
     room_slots: Dict[Tuple[str, int, int], List[Gene]] = {}
     batch_slots: Dict[Tuple[str, int, int], List[Gene]] = {}
+    batch_theory_slots: Dict[Tuple[str, int, str], List[Gene]] = {}
 
     # Lecture occurrence counts
     lecture_genes: Dict[str, List[Gene]] = {l.lecture_id: [] for l in lectures}
@@ -192,6 +193,11 @@ def validate(
                     )
                 )
 
+        # Record same-day theory subject slots (practicals exempt)
+        sub = subjects.get(lec.subject_id)
+        if sub and sub.type == "theory" and 0 <= gene.day < NUM_DAYS:
+            batch_theory_slots.setdefault((lec.batch_id, gene.day, lec.subject_id), []).append(gene)
+
         # Record occupancy for clash detection
         for d, p in valid_slots:
             t_key = (lec.teacher_id, d, p)
@@ -268,7 +274,27 @@ def validate(
                 )
 
     # ------------------------------------------------------------------------
-    # 4. Informational Soft Summary (Auditing Quality)
+    # 4. Same-Day Theory Duplicates (Batch Hard Constraint)
+    # ------------------------------------------------------------------------
+    for (b_id, d, sub_id), genes_list in batch_theory_slots.items():
+        if len(genes_list) > 1:
+            b_name = batches[b_id].name if b_id in batches else b_id
+            sub = subjects.get(sub_id)
+            sub_name = sub.name if sub else sub_id
+            clashing_ids = [g.lecture_id for g in genes_list]
+            for _ in range(len(genes_list) - 1):
+                violations.append(
+                    Violation(
+                        kind="THEORY_SAME_DAY_DUPLICATE",
+                        details=(
+                            f"Theory subject '{sub_name}' ({sub_id}) scheduled {len(genes_list)} times on day {d} "
+                            f"for batch '{b_name}' across lectures: {clashing_ids}."
+                        ),
+                    )
+                )
+
+    # ------------------------------------------------------------------------
+    # 5. Informational Soft Summary (Auditing Quality)
     # ------------------------------------------------------------------------
     # Calculate informative metrics without importing fitness module
     soft_summary: Dict[str, Any] = {

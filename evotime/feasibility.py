@@ -195,6 +195,19 @@ def check_feasibility(
             f"room-slots ({total_room_slots})."
         )
 
+    # ------------------------------------------------------------------------
+    # 6. Theory Subject Daily Distribution Feasibility (Pigeonhole Check)
+    # ------------------------------------------------------------------------
+    for b_id, b in batches.items():
+        for sub_id in b.subject_ids:
+            sub = subjects.get(sub_id)
+            if sub and sub.type == "theory" and sub.lectures_per_week > NUM_DAYS:
+                errors.append(
+                    f"Batch '{b.name}' requires {sub.lectures_per_week} lectures/week for theory subject "
+                    f"'{sub.name}', which exceeds the number of working days ({NUM_DAYS}). "
+                    f"By the pigeonhole principle, this violates the hard constraint of at most one theory session per day."
+                )
+
     is_feasible = (len(errors) == 0)
     return FeasibilityReport(
         ok=is_feasible,

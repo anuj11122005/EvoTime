@@ -49,6 +49,7 @@ evotime/
 ├── experiments.py          # Multi-seed benchmarking and telemetry suite
 ├── tuning_experiments.py   # Parameter ablation and tuning experiments suite
 ├── summarize_results.py    # Results analyzer and summary verification utility
+├── quality_metrics.py      # Quality metrics audit tool (duplicates, consecutive periods)
 ├── evotime/
 │   ├── __init__.py
 │   ├── config.py           # GA hyperparameters, penalty weights, day/period settings
@@ -100,11 +101,11 @@ A time slot is `(day, period)` with day ∈ 0–4 (Mon–Fri) and period ∈ 0�
 ## 5. Genetic Algorithm design
 | Step | Design |
 |---|---|
-| Initialization | Random valid-range genes per lecture (room matches kind, practical start fits in day). Optionally bias to teacher-available slots. Population size 50 (configurable). |
+| Initialization | Distinct-day assignment for theory subjects per batch (guarantees zero same-day theory duplicates at Gen 0). Practicals placed within day bounds. Optionally bias to teacher-available slots. Population size 50 (configurable). |
 | Penalty | `1000 × hard + 10 × soft` (weights in config). Lower is better. Fitness for display = `1/(1+penalty)`. |
-| Selection | Tournament selection, k = 3. |
-| Crossover | Uniform crossover **by lecture_id**: for each lecture, child takes (room, day, start) from parent A or B with probability 0.5. Alternative: single-point on the gene list (both are index-aligned). Rate ≈ 0.8. |
-| Mutation | Per-gene with rate ≈ 0.05–0.1: change room, or move to another day/period, or swap slots of two genes. Conflict-directed mutation (prefer genes involved in clashes) is encouraged. |
+| Selection | Tournament selection, k = 4 (tuned). |
+| Crossover | Group crossover **by (batch, subject)**: inherits all sessions of a subject group from Parent A or Parent B with probability 0.5. Preserves distinct-day invariants. Rate ≈ 0.8. |
+| Mutation | Per-gene mutation (time/room/swap). Conflict-directed mutation prioritizes genes in clashes or same-day duplicates, nudging them to free days and slots. Rate = 0.08. |
 | Repair | After operators: clamp ranges, fix practical blocks that overflow the day, force lab rooms for practicals, replace undersized rooms with a suitable free room. |
 | Elitism | Top E (default 2) individuals copied unchanged to next generation. |
 | Termination | Hard violations = 0 and penalty ≤ threshold, or max generations (default 100–300). Stagnation restart optional. |
@@ -119,13 +120,13 @@ A time slot is `(day, period)` with day ∈ 0–4 (Mon–Fri) and period ∈ 0�
 5. Teacher unavailable in assigned slot.
 6. Room capacity < batch strength.
 7. Practical not in consecutive periods / not in a lab / crossing day boundary.
+8. Theory subject same-day duplicate: for each batch, day and theory subject, if k >= 2 sessions fall on that day, count k - 1 violations (`THEORY_SAME_DAY_DUPLICATE`). Practicals are exempt.
 
 ### Soft (each unit counts 1 × 10)
-1. Teacher has more than 3 consecutive periods.
-2. Same subject repeated more than once on a day for a batch (poor distribution).
-3. Gaps (free periods) between a batch's classes in a day.
-4. Teacher daily workload deviates from the mean.
-5. Undesirable patterns (e.g. batch's day with only one lecture, last-period practicals).
+1. Teacher has more than 3 consecutive periods (`teacher_consecutive`).
+2. Gaps (free periods) between a batch's classes in a day (`batch_gaps`).
+3. Teacher daily workload deviates from the mean (`teacher_workload_variance`).
+4. Undesirable patterns (e.g. batch's day with only one lecture, last-period practicals) (`undesirable_patterns`).
 
 ## 7. Validator (independence requirement)
 `validator.py` re-derives every check from the raw timetable using its own slot-occupancy maps. It imports models only, **never `fitness.py`**. Output:
@@ -143,6 +144,7 @@ Before running the GA, verify necessary conditions:
 - For each teacher: assigned periods ≤ number of available slots.
 - Enough lab rooms for practicals; each batch fits at least one room of required kind.
 - Total room-slots ≥ total required periods.
+- For each batch and theory subject: lectures per week ≤ working days (pigeonhole principle check for daily distribution).
 A failed pre-check shows an explicit "infeasible configuration" message. (Passing the pre-check is necessary, not sufficient; the validator still decides.)
 
 ## 9. Sample dataset sizing (feasible)

@@ -48,6 +48,20 @@ def test_end_to_end_feasible_dataset_succeeds(feasible_dataset, seed):
     assert val_report.hard_count == 0
     assert len(val_report.hard_violations) == 0
 
+    # Recount same-day theory duplicates directly in the test itself
+    lec_map = {l.lecture_id: l for l in feasible_dataset.lectures}
+    theory_counts = {}
+    for g in result.final_best.genes:
+        lec = lec_map[g.lecture_id]
+        sub = feasible_dataset.subjects[lec.subject_id]
+        if sub.type == "theory":
+            key = (lec.batch_id, g.day, lec.subject_id)
+            theory_counts[key] = theory_counts.get(key, 0) + 1
+    assert all(count <= 1 for count in theory_counts.values()), (
+        f"Seed {seed} produced same-day theory duplicates: "
+        f"{[k for k, v in theory_counts.items() if v > 1]}"
+    )
+
 
 def test_end_to_end_infeasible_dataset_rejected(infeasible_dataset):
     """Verify that the feasibility pre-check immediately flags the impossible dataset."""

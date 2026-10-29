@@ -223,7 +223,7 @@ def grid_to_html(grid: TimetableGrid) -> str:
     for p in range(PERIODS_PER_DAY):
         html.append('<tr>')
         html.append(
-            f'<td style="padding:8px; font-weight:bold; background:#f1f5f9; border:1px solid #cbd5e1; font-size:12px;">'
+            f'<td style="padding:8px; font-weight:bold; background:#f1f5f9; color:#0f172a; border:1px solid #cbd5e1; font-size:12px;">'
             f'{PERIOD_LABELS[p]}</td>'
         )
 

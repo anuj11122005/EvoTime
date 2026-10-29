@@ -347,7 +347,6 @@ with tab_validator:
         soft_units = res.final_breakdown.soft_units
         soft_rows = [
             {"Soft Constraint Preference": "Teacher Fatigue (>3 Consecutive Periods)", "Violation Units": soft_units.get("teacher_consecutive", 0)},
-            {"Soft Constraint Preference": "Subject Clustering (>1 Same Subject / Day)", "Violation Units": soft_units.get("batch_subject_duplicate", 0)},
             {"Soft Constraint Preference": "Student Idle Gap Periods", "Violation Units": soft_units.get("batch_gaps", 0)},
             {"Soft Constraint Preference": "Faculty Daily Workload Variance", "Violation Units": soft_units.get("teacher_workload_variance", 0)},
             {"Soft Constraint Preference": "Undesirable Patterns (Last-period Lab, 1-Lecture Day)", "Violation Units": soft_units.get("undesirable_patterns", 0)},

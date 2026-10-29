@@ -106,22 +106,43 @@ def init_population(
 
     for _ in range(pop_size):
         genes: List[Gene] = []
+        # Group lectures by (batch_id, subject_id) for theory distinct-day assignment
+        batch_sub_lectures: Dict[Tuple[str, str], List[Lecture]] = {}
         for lec in dataset.lectures:
-            # Pick a room matching the required type
+            sub = dataset.subjects.get(lec.subject_id)
+            if sub and sub.type == "theory":
+                batch_sub_lectures.setdefault((lec.batch_id, lec.subject_id), []).append(lec)
+
+        # Pre-assign distinct random days for each theory (batch, subject) group
+        assigned_days_by_lec: Dict[str, int] = {}
+        for (b_id, s_id), lecs in batch_sub_lectures.items():
+            num_sessions = len(lecs)
+            if num_sessions <= NUM_DAYS:
+                chosen_days = rng.sample(range(NUM_DAYS), num_sessions)
+            else:
+                chosen_days = [rng.randint(0, NUM_DAYS - 1) for _ in range(num_sessions)]
+            for lec_obj, d in zip(lecs, chosen_days):
+                assigned_days_by_lec[lec_obj.lecture_id] = d
+
+        for lec in dataset.lectures:
             room_pool = labs if lec.needs_lab else classrooms
             room_id = rng.choice(room_pool) if room_pool else rng.choice(list(dataset.rooms.keys()))
 
             max_start = PERIODS_PER_DAY - lec.duration
-            day = rng.randint(0, NUM_DAYS - 1)
+            if lec.lecture_id in assigned_days_by_lec:
+                day = assigned_days_by_lec[lec.lecture_id]
+            else:
+                day = rng.randint(0, NUM_DAYS - 1)
+
             start_p = rng.randint(0, max_start)
 
-            # Optional bias: try placing within teacher's available slots
+            # Optional bias: try placing within teacher's available slots on the assigned day
             if bias_available_slots and rng.random() < 0.70:
                 teacher = dataset.teachers.get(lec.teacher_id)
                 if teacher and teacher.available_slots:
                     valid_avail = [
                         (d, p) for (d, p) in teacher.available_slots
-                        if p <= max_start and all((d, p + i) in teacher.available_slots for i in range(lec.duration))
+                        if d == day and p <= max_start and all((d, p + i) in teacher.available_slots for i in range(lec.duration))
                     ]
                     if valid_avail:
                         day, start_p = rng.choice(valid_avail)
@@ -159,19 +180,41 @@ def crossover(
     parent_b: Timetable,
     crossover_rate: float,
     rng: random.Random,
+    dataset: Optional[Any] = None,
 ) -> Timetable:
     """
-    Uniform Crossover by lecture_id:
-    Because chromosomes are index-aligned lists of identical lecture requirements,
-    for each lecture the child takes the assignment (room, day, start_period) from
-    Parent A with 50% probability, or Parent B with 50% probability.
+    Group Crossover by (batch, subject):
+    Inherits all sessions of a given (batch, subject) group from ONE parent per group
+    with 50% probability, rather than choosing per individual lecture.
+
+    Why this keeps distinct days intact:
+    If both Parent A and Parent B satisfy the rule that every theory subject appears at
+    most once per day, inheriting the entire group of sessions from Parent A or Parent B
+    guarantees that the child preserves the distinct-day property without recombining
+    lectures onto duplicate days.
     """
     if rng.random() > crossover_rate:
         return copy.deepcopy(parent_a)
 
+    # Determine group key for each gene
+    lec_map = {l.lecture_id: l for l in dataset.lectures} if dataset else {}
+
+    # Map group_key -> bool (True for Parent A, False for Parent B)
+    group_choices: Dict[Any, bool] = {}
+
     child_genes: List[Gene] = []
     for g_a, g_b in zip(parent_a.genes, parent_b.genes):
-        source = g_a if rng.random() < 0.5 else g_b
+        lec = lec_map.get(g_a.lecture_id)
+        if lec:
+            group_key = (lec.batch_id, lec.subject_id)
+        else:
+            # Fallback to prefix before session index in lecture_id
+            group_key = g_a.lecture_id.rsplit("_", 1)[0] if "_" in g_a.lecture_id else g_a.lecture_id
+
+        if group_key not in group_choices:
+            group_choices[group_key] = (rng.random() < 0.5)
+
+        source = g_a if group_choices[group_key] else g_b
         child_genes.append(
             Gene(
                 lecture_id=source.lecture_id,
@@ -185,11 +228,12 @@ def crossover(
 
 
 def _get_clashing_gene_indices(timetable: Timetable, dataset: Any) -> Set[int]:
-    """Helper to detect gene indices involved in teacher, room, or batch clashes or unavailability."""
+    """Helper to detect gene indices involved in clashes, unavailability, or same-day theory duplicates."""
     lecture_map: Dict[str, Lecture] = {l.lecture_id: l for l in dataset.lectures}
     slot_teachers: Dict[Tuple[str, int, int], List[int]] = {}
     slot_rooms: Dict[Tuple[str, int, int], List[int]] = {}
     slot_batches: Dict[Tuple[str, int, int], List[int]] = {}
+    slot_theory_dups: Dict[Tuple[str, int, str], List[int]] = {}
     clashing_indices: Set[int] = set()
 
     for idx, gene in enumerate(timetable.genes):
@@ -197,6 +241,11 @@ def _get_clashing_gene_indices(timetable: Timetable, dataset: Any) -> Set[int]:
         if not lec:
             continue
         teacher = dataset.teachers.get(lec.teacher_id)
+        sub = dataset.subjects.get(lec.subject_id)
+
+        if sub and sub.type == "theory" and 0 <= gene.day < NUM_DAYS:
+            dup_key = (lec.batch_id, gene.day, lec.subject_id)
+            slot_theory_dups.setdefault(dup_key, []).append(idx)
 
         for p in range(lec.duration):
             period = gene.start_period + p
@@ -214,7 +263,13 @@ def _get_clashing_gene_indices(timetable: Timetable, dataset: Any) -> Set[int]:
                 b_key = (lec.batch_id, gene.day, period)
                 slot_batches.setdefault(b_key, []).append(idx)
 
-    for group in list(slot_teachers.values()) + list(slot_rooms.values()) + list(slot_batches.values()):
+    all_groups = (
+        list(slot_teachers.values())
+        + list(slot_rooms.values())
+        + list(slot_batches.values())
+        + list(slot_theory_dups.values())
+    )
+    for group in all_groups:
         if len(group) > 1:
             clashing_indices.update(group)
 
@@ -245,12 +300,70 @@ def mutate(
         gene = timetable.genes[target_idx]
         lec = lecture_map.get(gene.lecture_id)
         if lec:
-            max_start = PERIODS_PER_DAY - lec.duration
-            gene.day = rng.randint(0, NUM_DAYS - 1)
-            gene.start_period = rng.randint(0, max_start)
+            sub = dataset.subjects.get(lec.subject_id)
+            teacher = dataset.teachers.get(lec.teacher_id)
             room_pool = labs if lec.needs_lab else classrooms
-            if room_pool:
-                gene.room_id = rng.choice(room_pool)
+            max_start = PERIODS_PER_DAY - lec.duration
+
+            # Check if this gene is part of a same-day theory duplicate
+            is_theory = (sub is not None and sub.type == "theory")
+            same_day_days = set()
+            if is_theory:
+                same_day_days = {
+                    other_g.day for i, other_g in enumerate(timetable.genes)
+                    if i != target_idx
+                    and lecture_map.get(other_g.lecture_id)
+                    and lecture_map[other_g.lecture_id].batch_id == lec.batch_id
+                    and lecture_map[other_g.lecture_id].subject_id == lec.subject_id
+                    and 0 <= other_g.day < NUM_DAYS
+                }
+
+            allowed_days = [d for d in range(NUM_DAYS) if d not in same_day_days] if same_day_days else list(range(NUM_DAYS))
+            if not allowed_days:
+                allowed_days = list(range(NUM_DAYS))
+
+            # Build occupancy of other genes to prefer free slots
+            occupied_batch = set()
+            occupied_teacher = set()
+            occupied_rooms = set()
+            for i, other_g in enumerate(timetable.genes):
+                if i == target_idx:
+                    continue
+                o_lec = lecture_map.get(other_g.lecture_id)
+                if not o_lec or other_g.day not in allowed_days:
+                    continue
+                for p in range(o_lec.duration):
+                    slot = (other_g.day, other_g.start_period + p)
+                    if o_lec.batch_id == lec.batch_id:
+                        occupied_batch.add(slot)
+                    if o_lec.teacher_id == lec.teacher_id:
+                        occupied_teacher.add(slot)
+                    occupied_rooms.add((other_g.room_id, slot[0], slot[1]))
+
+            # Find candidate (day, start_period, room) that are free
+            ideal_candidates = []
+            for d in allowed_days:
+                for p in range(max_start + 1):
+                    slots = [(d, p + offset) for offset in range(lec.duration)]
+                    if teacher and not all(s in teacher.available_slots for s in slots):
+                        continue
+                    if any(s in occupied_batch or s in occupied_teacher for s in slots):
+                        continue
+                    # Check room availability
+                    for r_id in room_pool:
+                        if not any((r_id, s[0], s[1]) in occupied_rooms for s in slots):
+                            ideal_candidates.append((d, p, r_id))
+
+            if ideal_candidates:
+                d_choice, p_choice, r_choice = rng.choice(ideal_candidates)
+                gene.day = d_choice
+                gene.start_period = p_choice
+                gene.room_id = r_choice
+            else:
+                gene.day = rng.choice(allowed_days)
+                gene.start_period = rng.randint(0, max_start)
+                if room_pool:
+                    gene.room_id = rng.choice(room_pool)
 
     # 2. Standard uniform per-gene mutation
     for idx, gene in enumerate(timetable.genes):
@@ -336,7 +449,7 @@ def run_ga(
             parent_a = tournament_selection(population, penalties, config.tournament_k, rng)
             parent_b = tournament_selection(population, penalties, config.tournament_k, rng)
 
-            child = crossover(parent_a, parent_b, config.crossover_rate, rng)
+            child = crossover(parent_a, parent_b, config.crossover_rate, rng, dataset)
             mutate(child, dataset, config.mutation_rate, rng)
             repair_timetable(child, dataset, rng)
 
@@ -368,7 +481,7 @@ def run_ga(
             callback(gen, current_best_breakdown, avg_penalty)
 
         # Early termination check: feasible and penalty sufficiently minimized
-        if current_best_breakdown.hard_total == 0 and current_best_breakdown.penalty <= 300:
+        if current_best_breakdown.hard_total == 0 and current_best_breakdown.penalty <= config.termination_penalty_threshold:
             stop_reason = f"Feasible timetable found at generation {gen} (Hard clashes: 0, Penalty: {current_best_breakdown.penalty})"
             break
 

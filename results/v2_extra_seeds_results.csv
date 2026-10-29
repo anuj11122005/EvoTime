@@ -1,0 +1,6 @@
+seed,status,generations_run,final_hard,final_soft,runtime_sec,stop_reason
+201,SUCCESS,31,0,11.2,1.09,"Feasible timetable found at generation 31 (Hard clashes: 0, Penalty: 112.0)"
+202,SUCCESS,35,0,13.8,1.05,"Feasible timetable found at generation 35 (Hard clashes: 0, Penalty: 138.0)"
+203,SUCCESS,36,0,16.4,1.03,"Feasible timetable found at generation 36 (Hard clashes: 0, Penalty: 164.0)"
+204,SUCCESS,29,0,17.8,0.89,"Feasible timetable found at generation 29 (Hard clashes: 0, Penalty: 178.0)"
+205,SUCCESS,28,0,16.2,0.86,"Feasible timetable found at generation 28 (Hard clashes: 0, Penalty: 162.0)"

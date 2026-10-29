@@ -87,3 +87,15 @@ def test_format_feasibility_summary_output():
     assert "CSE-A (3rd Year): 21 of 25 slots used (84.0%)" in summary_text
     assert "Faculty Workload vs. Availability" in summary_text
 
+
+
+def test_theory_subject_exceeding_working_days_rejected():
+    """Verify feasibility rejects a theory subject requiring more lectures than working days (e.g. 6 lectures/week in 5-day week)."""
+    dataset = get_feasible_dataset()
+    # Modify Soft Computing (CS301) to require 6 lectures/week
+    dataset.subjects["CS301"].lectures_per_week = 6
+    report = check_feasibility(dataset)
+
+    assert report.ok is False
+    assert any("Soft Computing" in err and "exceeds the number of working days" in err for err in report.errors)
+    assert any("CSE-A" in err or "CSE-B" in err for err in report.errors)

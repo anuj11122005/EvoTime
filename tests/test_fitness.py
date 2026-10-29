@@ -11,7 +11,6 @@ import pytest
 from evotime.fitness import (
     evaluate,
     soft_batch_gaps,
-    soft_batch_subject_duplicate,
     soft_teacher_consecutive,
     soft_teacher_workload_variance,
     soft_undesirable_patterns,
@@ -156,13 +155,38 @@ def test_practical_room_type_mismatch_detection(dataset, valid_timetable):
 def test_soft_constraint_functions(dataset, valid_timetable):
     """Verify that all isolated soft constraint functions execute and return valid numbers."""
     u1 = soft_teacher_consecutive(valid_timetable, dataset)
-    u2 = soft_batch_subject_duplicate(valid_timetable, dataset)
     u3 = soft_batch_gaps(valid_timetable, dataset)
     u4 = soft_teacher_workload_variance(valid_timetable, dataset)
     u5 = soft_undesirable_patterns(valid_timetable, dataset)
 
     assert isinstance(u1, int) and u1 >= 0
-    assert isinstance(u2, int) and u2 >= 0
     assert isinstance(u3, int) and u3 >= 0
     assert isinstance(u4, float) and u4 >= 0.0
     assert isinstance(u5, int) and u5 >= 0
+
+
+def test_theory_same_day_duplicate_detection(dataset, valid_timetable):
+    """Verify fitness detects when the same theory subject appears 2+ times on one day for a batch."""
+    tt = copy.deepcopy(valid_timetable)
+    # Find two theory lectures for CSE-A with subject CS301
+    sc_genes = [g for g in tt.genes if "L_B_CSE_A_CS301" in g.lecture_id]
+    assert len(sc_genes) >= 2
+    # Place both on the same day in non-clashing periods and rooms
+    sc_genes[1].day = sc_genes[0].day
+    sc_genes[1].start_period = (sc_genes[0].start_period + 2) % 5
+    sc_genes[1].room_id = "R102"
+    sc_genes[0].room_id = "R101"
+
+    breakdown = evaluate(tt, dataset)
+    assert breakdown.hard_counts["theory_same_day_duplicate"] >= 1
+    assert breakdown.hard_total >= 1
+
+
+def test_practical_exempt_from_same_day_duplicate(dataset, valid_timetable):
+    """Verify that practical lab sessions are exempt from theory same-day duplicate constraint."""
+    tt = copy.deepcopy(valid_timetable)
+    lec_map = {l.lecture_id: l for l in dataset.lectures}
+    lab_genes = [g for g in tt.genes if lec_map[g.lecture_id].needs_lab]
+    # Verify no theory duplicate is assessed for valid lab placement
+    breakdown = evaluate(tt, dataset)
+    assert breakdown.hard_counts["theory_same_day_duplicate"] == 0

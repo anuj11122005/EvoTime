@@ -28,7 +28,6 @@ from evotime.config import (
     PERIODS_PER_DAY,
     SOFT_PENALTY_WEIGHT,
     WEIGHT_BATCH_GAPS,
-    WEIGHT_BATCH_SUBJECT_DUPLICATE,
     WEIGHT_TEACHER_CONSECUTIVE,
     WEIGHT_TEACHER_WORKLOAD_VARIANCE,
     WEIGHT_UNDESIRABLE_PATTERNS,
@@ -104,38 +103,6 @@ def soft_teacher_consecutive(timetable: Timetable, dataset: Any) -> int:
                         violations += 1
                 else:
                     consecutive_run = 1
-
-    return violations
-
-
-def soft_batch_subject_duplicate(timetable: Timetable, dataset: Any) -> int:
-    """
-    Counts instances where the same subject is scheduled more than once on the same day for a batch.
-
-    Why this matters:
-    Students learn better when subjects are evenly distributed throughout the week
-    rather than crammed into a single day (e.g. 2 separate Soft Computing lectures on Monday).
-    """
-    lecture_map: Dict[str, Lecture] = {l.lecture_id: l for l in dataset.lectures}
-    # Map batch -> day -> subject -> count
-    counts: Dict[str, Dict[int, Dict[str, int]]] = {
-        b_id: {d: {} for d in range(NUM_DAYS)} for b_id in dataset.batches
-    }
-
-    for gene in timetable.genes:
-        lec = lecture_map.get(gene.lecture_id)
-        if not lec:
-            continue
-        if 0 <= gene.day < NUM_DAYS:
-            day_map = counts[lec.batch_id][gene.day]
-            day_map[lec.subject_id] = day_map.get(lec.subject_id, 0) + 1
-
-    violations = 0
-    for b_id, days in counts.items():
-        for d, subject_counts in days.items():
-            for sub_id, count in subject_counts.items():
-                if count > 1:
-                    violations += (count - 1)
 
     return violations
 
@@ -367,6 +334,19 @@ def evaluate(
     duplicate_lectures = sum(count - 1 for count in gene_counts_per_lecture.values() if count > 1)
     lecture_count_violations = missing_lectures + duplicate_lectures + unknown_lectures
 
+    # 8. Same-day theory subject duplicates (batch pedagogical hard constraint, practicals exempt)
+    batch_theory_counts: Dict[Tuple[str, int, str], int] = {}
+    for gene in timetable.genes:
+        lec = lecture_map.get(gene.lecture_id)
+        if not lec:
+            continue
+        sub = subjects.get(lec.subject_id)
+        if sub and sub.type == "theory" and 0 <= gene.day < NUM_DAYS:
+            key = (lec.batch_id, gene.day, lec.subject_id)
+            batch_theory_counts[key] = batch_theory_counts.get(key, 0) + 1
+
+    theory_same_day_duplicate = sum(count - 1 for count in batch_theory_counts.values() if count > 1)
+
     hard_counts: Dict[str, int] = {
         "teacher_clashes": teacher_clashes,
         "room_clashes": room_clashes,
@@ -377,19 +357,18 @@ def evaluate(
         "room_type_mismatch": room_type_mismatch,
         "lecture_count_violations": lecture_count_violations,
         "out_of_range": out_of_range,
+        "theory_same_day_duplicate": theory_same_day_duplicate,
     }
     hard_total = sum(hard_counts.values())
 
     # Evaluate soft constraints
     u_teacher_consec = soft_teacher_consecutive(timetable, dataset)
-    u_batch_dup = soft_batch_subject_duplicate(timetable, dataset)
     u_batch_gaps = soft_batch_gaps(timetable, dataset)
     u_teacher_var = soft_teacher_workload_variance(timetable, dataset)
     u_undesirable = soft_undesirable_patterns(timetable, dataset)
 
     soft_units: Dict[str, Union[int, float]] = {
         "teacher_consecutive": u_teacher_consec,
-        "batch_subject_duplicate": u_batch_dup,
         "batch_gaps": u_batch_gaps,
         "teacher_workload_variance": u_teacher_var,
         "undesirable_patterns": u_undesirable,
@@ -397,7 +376,6 @@ def evaluate(
 
     soft_weighted = (
         (config.weight_teacher_consecutive * u_teacher_consec)
-        + (config.weight_batch_subject_duplicate * u_batch_dup)
         + (config.weight_batch_gaps * u_batch_gaps)
         + (config.weight_teacher_workload_variance * u_teacher_var)
         + (config.weight_undesirable_patterns * u_undesirable)

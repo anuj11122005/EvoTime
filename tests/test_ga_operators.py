@@ -166,3 +166,38 @@ def test_same_seed_produces_identical_results(dataset):
         assert g_a.day == g_b.day
         assert g_a.start_period == g_b.start_period
 
+
+
+def test_initialization_yields_zero_theory_duplicates(dataset):
+    """Verify that every individual in the initialized population has zero same-day theory duplicates."""
+    rng = random.Random(42)
+    pop = init_population(dataset, pop_size=20, rng=rng)
+    lec_map = {l.lecture_id: l for l in dataset.lectures}
+    for ind in pop:
+        counts = {}
+        for g in ind.genes:
+            lec = lec_map[g.lecture_id]
+            sub = dataset.subjects[lec.subject_id]
+            if sub.type == "theory":
+                key = (lec.batch_id, g.day, lec.subject_id)
+                counts[key] = counts.get(key, 0) + 1
+        assert all(count <= 1 for count in counts.values()), f"Initialization produced duplicate theory days: {counts}"
+
+
+def test_group_crossover_preserves_zero_theory_duplicates(dataset):
+    """Verify that group crossover of two parents with zero duplicates yields a child with zero duplicates."""
+    rng = random.Random(42)
+    pop = init_population(dataset, pop_size=2, rng=rng)
+    parent_a, parent_b = pop[0], pop[1]
+    lec_map = {l.lecture_id: l for l in dataset.lectures}
+
+    for trial in range(50):
+        child = crossover(parent_a, parent_b, crossover_rate=1.0, rng=rng, dataset=dataset)
+        counts = {}
+        for g in child.genes:
+            lec = lec_map[g.lecture_id]
+            sub = dataset.subjects[lec.subject_id]
+            if sub.type == "theory":
+                key = (lec.batch_id, g.day, lec.subject_id)
+                counts[key] = counts.get(key, 0) + 1
+        assert all(count <= 1 for count in counts.values()), f"Group crossover produced duplicate theory days: {counts}"
